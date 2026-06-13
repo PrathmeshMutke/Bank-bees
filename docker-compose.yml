@@ -1,0 +1,199 @@
+version: '3.8'
+
+services:
+  # Redis Cache
+  redis:
+    image: redis:7.0-alpine
+    container_name: banking-redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  # Zookeeper (for Kafka)
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    container_name: banking-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    restart: unless-stopped
+
+  # Kafka Message Broker
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: banking-kafka
+    ports:
+      - "9092:9092"
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    restart: unless-stopped
+
+  # Auth Service (port 8081)
+  auth-service:
+    build: ./backend/auth-service
+    container_name: banking-auth-service
+    ports:
+      - "8081:8081"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:oracle:thin:@host.docker.internal:1521/XEPDB1
+      - SPRING_DATASOURCE_USERNAME=SYS
+      - SPRING_DATASOURCE_PASSWORD=12345678
+      - SPRING_DATASOURCE_CONNECTION_PROPERTIES=internal_logon=sysdba
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
+    depends_on:
+      - redis
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # Customer Service (port 8082)
+  customer-service:
+    build: ./backend/customer-service
+    container_name: banking-customer-service
+    ports:
+      - "8082:8082"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:oracle:thin:@host.docker.internal:1521/XEPDB1
+      - SPRING_DATASOURCE_USERNAME=SYS
+      - SPRING_DATASOURCE_PASSWORD=12345678
+      - SPRING_DATASOURCE_CONNECTION_PROPERTIES=internal_logon=sysdba
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # Account Service (port 8083)
+  account-service:
+    build: ./backend/account-service
+    container_name: banking-account-service
+    ports:
+      - "8083:8083"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:oracle:thin:@host.docker.internal:1521/XEPDB1
+      - SPRING_DATASOURCE_USERNAME=SYS
+      - SPRING_DATASOURCE_PASSWORD=12345678
+      - SPRING_DATASOURCE_CONNECTION_PROPERTIES=internal_logon=sysdba
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # Transaction Service (port 8084)
+  transaction-service:
+    build: ./backend/transaction-service
+    container_name: banking-transaction-service
+    ports:
+      - "8084:8084"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:oracle:thin:@host.docker.internal:1521/XEPDB1
+      - SPRING_DATASOURCE_USERNAME=SYS
+      - SPRING_DATASOURCE_PASSWORD=12345678
+      - SPRING_DATASOURCE_CONNECTION_PROPERTIES=internal_logon=sysdba
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+    depends_on:
+      - kafka
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # Payment Service (port 8085)
+  payment-service:
+    build: ./backend/payment-service
+    container_name: banking-payment-service
+    ports:
+      - "8085:8085"
+    restart: unless-stopped
+
+  # Loan Service (port 8086)
+  loan-service:
+    build: ./backend/loan-service
+    container_name: banking-loan-service
+    ports:
+      - "8086:8086"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:oracle:thin:@host.docker.internal:1521/XEPDB1
+      - SPRING_DATASOURCE_USERNAME=SYS
+      - SPRING_DATASOURCE_PASSWORD=12345678
+      - SPRING_DATASOURCE_CONNECTION_PROPERTIES=internal_logon=sysdba
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # Notification Service (port 8087)
+  notification-service:
+    build: ./backend/notification-service
+    container_name: banking-notification-service
+    ports:
+      - "8087:8087"
+    restart: unless-stopped
+
+  # Fraud Service (port 8088)
+  fraud-service:
+    build: ./backend/fraud-service
+    container_name: banking-fraud-service
+    ports:
+      - "8088:8088"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:oracle:thin:@host.docker.internal:1521/XEPDB1
+      - SPRING_DATASOURCE_USERNAME=SYS
+      - SPRING_DATASOURCE_PASSWORD=12345678
+      - SPRING_DATASOURCE_CONNECTION_PROPERTIES=internal_logon=sysdba
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+    depends_on:
+      - kafka
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # Audit Service (port 8089)
+  audit-service:
+    build: ./backend/audit-service
+    container_name: banking-audit-service
+    ports:
+      - "8089:8089"
+    restart: unless-stopped
+
+  # AI Assistant Service (port 8090)
+  ai-assistant-service:
+    build: ./backend/ai-assistant-service
+    container_name: banking-ai-assistant-service
+    ports:
+      - "8090:8090"
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # Reporting Service (port 8091)
+  reporting-service:
+    build: ./backend/reporting-service
+    container_name: banking-reporting-service
+    ports:
+      - "8091:8091"
+    restart: unless-stopped
+
+  # API Gateway (port 8080) — depends on all backend services
+  api-gateway:
+    build: ./backend/api-gateway
+    container_name: banking-api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - AUTH_SERVICE_URI=http://auth-service:8081
+      - CUSTOMER_SERVICE_URI=http://customer-service:8082
+      - ACCOUNT_SERVICE_URI=http://account-service:8083
+      - TRANSACTION_SERVICE_URI=http://transaction-service:8084
+      - PAYMENT_SERVICE_URI=http://payment-service:8085
+      - AI_SERVICE_URI=http://ai-assistant-service:8090
+    depends_on:
+      - auth-service
+      - customer-service
+      - account-service
+      - transaction-service
+      - payment-service
+    restart: unless-stopped

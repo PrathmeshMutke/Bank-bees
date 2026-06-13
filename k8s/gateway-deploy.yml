@@ -1,0 +1,121 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api-gateway
+  template:
+    metadata:
+      labels:
+        app: api-gateway
+    spec:
+      containers:
+        - name: api-gateway
+          image: api-gateway:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: AUTH_SERVICE_URI
+              value: http://auth-service:8081
+            - name: TRANSACTION_SERVICE_URI
+              value: http://transaction-service:8084
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-gateway
+spec:
+  ports:
+    - port: 8080
+      targetPort: 8080
+  selector:
+    app: api-gateway
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth-service
+  template:
+    metadata:
+      labels:
+        app: auth-service
+    spec:
+      containers:
+        - name: auth-service
+          image: auth-service:latest
+          ports:
+            - containerPort: 8081
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:oracle:thin:@oracle-db:1521/XEPDB1
+            - name: SPRING_DATASOURCE_USERNAME
+              value: SYS
+            - name: SPRING_DATASOURCE_PASSWORD
+              value: "12345678"
+            - name: SPRING_DATASOURCE_CONNECTION_PROPERTIES
+              value: internal_logon=sysdba
+            - name: SPRING_REDIS_HOST
+              value: redis
+            - name: SPRING_REDIS_PORT
+              value: "6379"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+spec:
+  ports:
+    - port: 8081
+      targetPort: 8081
+  selector:
+    app: auth-service
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: transaction-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: transaction-service
+  template:
+    metadata:
+      labels:
+        app: transaction-service
+    spec:
+      containers:
+        - name: transaction-service
+          image: transaction-service:latest
+          ports:
+            - containerPort: 8084
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:oracle:thin:@oracle-db:1521/XEPDB1
+            - name: SPRING_DATASOURCE_USERNAME
+              value: SYS
+            - name: SPRING_DATASOURCE_PASSWORD
+              value: "12345678"
+            - name: SPRING_DATASOURCE_CONNECTION_PROPERTIES
+              value: internal_logon=sysdba
+            - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
+              value: kafka:9092
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: transaction-service
+spec:
+  ports:
+    - port: 8084
+      targetPort: 8084
+  selector:
+    app: transaction-service

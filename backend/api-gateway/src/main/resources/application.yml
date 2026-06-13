@@ -1,0 +1,65 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: "*"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders: "*"
+      routes:
+        - id: auth-service
+          uri: ${AUTH_SERVICE_URI:http://localhost:8081}
+          predicates:
+            - Path=/api/v1/auth/**
+
+        - id: customer-service
+          uri: ${CUSTOMER_SERVICE_URI:http://localhost:8082}
+          predicates:
+            - Path=/api/v1/customers/**
+
+        - id: account-service
+          uri: ${ACCOUNT_SERVICE_URI:http://localhost:8083}
+          predicates:
+            - Path=/api/v1/accounts/**
+
+        - id: transaction-service
+          uri: ${TRANSACTION_SERVICE_URI:http://localhost:8084}
+          predicates:
+            - Path=/api/v1/transactions/**
+
+        - id: payment-service
+          uri: ${PAYMENT_SERVICE_URI:http://localhost:8085}
+          predicates:
+            - Path=/api/v1/payments/**
+
+        - id: loan-service
+          uri: ${LOAN_SERVICE_URI:http://localhost:8086}
+          predicates:
+            - Path=/api/v1/loans/**
+
+        - id: ai-assistant-service
+          uri: ${AI_SERVICE_URI:http://localhost:8090}
+          predicates:
+            - Path=/api/v1/ai/**
+
+jwt:
+  secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+
+logging:
+  level:
+    root: INFO
+    com.banking: INFO
+    org.springframework.cloud.gateway: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
